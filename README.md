@@ -1,5 +1,11 @@
 # Hierarchical State Machine (HSM) Framework Sample
 
+>**_NOTE FOR WHEN OPENING THE PROJECT_**
+>- If you open the project and get a message from FMOD about the banks being broken, press repair on the dialogue window that popped up to fix the issue.
+>- To test the HSM in action, open the testing level located at: `/Assets/Scenes/Testing Scene.unity` then press play.
+
+## OVERVIEW
+
 In game development, logic complexity tends to grow rapidly—whether in character behavior, gameplay systems, or UI flows. What often begins as simple logic can evolve into a tangled web of states, each dependent on others, leading to tight coupling and fragile code.
 
 To manage this growing complexity, developers commonly adopt the State design pattern, isolating logic into self-contained "states." One popular implementation is the Finite State Machine (FSM)—like Unity’s Animator system—where each state transitions to others based on rules.
