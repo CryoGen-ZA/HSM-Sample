@@ -24,163 +24,210 @@ A better alternative for managing complex, layered behaviors is a Hierarchical S
 
 Below is an example of how a HSM would be structured:
 ```
-Statmachine
+StateMachine
 |
 ├── SuperState (manages broad behavior categories)
-    ├── SubState A (handles specific behaviors, often reusable between super behaviours)
+    ├── SubState A (default: entered automatically with its SuperState)
     |   |
     |   └── SubState A-A (A state within the substate)
     |
-    └── SubState B (handles specific behaviors, often reusable between super behaviours)
+    └── SubState B (handles specific behaviors)
 ```
 **Key Advantage**: Rather than being restricted to a single active state, HSMs allow for layered states—superstates managing broad logic and substates handling finer details. Substates can even contain other substates, enabling deep composition. This reduces flat-state complexity and allows shared behavior at different hierarchy levels.
 
-### Techinal Implementation:
+At any time the machine has one **active path**, from a root state down to a leaf (e.g. `Grounded > Run`). Entering a superstate automatically enters its default substate, and leaving a superstate always exits its active substate first.
 
-All States inherit from an abstract Base state, conveniently called "BaseState"
+### Technical Implementation
+
+The framework lives in `Assets/Scripts/HSM/Core` and is made of four pieces: `BaseState`, `Transition`, `StateMachine` and `HsmBehaviour`.
+
+#### BaseState
+
+All states inherit from the abstract `BaseState`. A state only contains **behaviour**: it doesn't switch its own substates or decide its own transitions. Its position in the tree is fixed when it is registered, and every lifecycle hook is optional, so you only override what you need.
 ```csharp
 public abstract class BaseState
 {
-    protected readonly StateGenerator Generator;
-    private BaseState _subState;
-    private BaseState _superState;
+    // Set once at registration, read-only afterwards
+    public StateMachine Machine { get; }
+    public BaseState Parent { get; }
+    public BaseState DefaultChild { get; }
+    public int Depth { get; }
+    public bool IsActive { get; }
 
-    public abstract void EnterState();
-    public abstract void ExitState();
-    public abstract void UpdateState();
-    public abstract bool CheckStateSwitch(out string newState);
+    protected virtual void OnEnter() { }      // before its default child is entered
+    protected virtual void OnExit() { }       // after its active child has been exited
+    protected virtual void OnUpdate() { }     // every tick, parents before children
+    protected virtual void OnLateUpdate() { } // every tick, children before parents
+
+    // Imperative escape hatch, applied at the start of the next tick
+    protected void RequestTransition<T>(bool allowReenter = false) where T : BaseState;
 }
 ```
-The abstract base class enforces a consistent interface while allowing flexible implementations.
-All states also have access to the StateGenerator, allowing them to manage their own substate transitions.
+The hooks are called only by the state machine. That guarantees a consistent order: children are always exited before their parents, and parents are always entered before their children.
 
-The State Generator handles the tracking of existing states, allowing us to reuse them instead of reimplementing them each time a state is changed.
+#### Transition
+
+A transition is a guarded edge to a target state:
 ```csharp
-public class StateGenerator
+public sealed class Transition
 {
-    private Dictionary<string, BaseState> _states = new();
-    
-    public BaseState GetState(string key) => _states.GetValueOrDefault(key);
-    public void AddState(string key, BaseState state) => _states[key] = state;
+    public BaseState Target { get; }
+    public Func<bool> Condition { get; }
+    public bool AllowReenter { get; } // exit and re-enter the target if it is already active
 }
 ```
-This provides us with centralized state management with O(1) lookup performance using the Dictionary. This is important as a HSM could potentially have many states active at a time.
+Transitions are declared during registration instead of being written into each state, so the whole transition graph of an entity can be read in one place.
 
+#### StateMachine
 
-The State machine is in charge of handling the super states and allow the states and their substates to tick;
+The `StateMachine` owns the state tree, the active path and all transitions. States are stored in a `Dictionary<Type, BaseState>`, which gives O(1) type-safe lookups. Asking for a state that was never registered throws a clear error instead of returning `null`.
 ```csharp
-public class StateMachine
+public sealed class StateMachine
 {
-    private BaseState _currentBaseState;
-    private StateGenerator _generator;
+    public T AddState<T>(T state, BaseState parent = null, bool isDefault = false) where T : BaseState;
+    public void AddTransition<TFrom, TTo>(Func<bool> condition, bool allowReenter = false);
+    public void AddAnyTransition<TTo>(Func<bool> condition, bool allowReenter = false);
+    public T GetState<T>() where T : BaseState;
 
-    public void Initialize()
-    {
-    }
+    public void Start<T>() where T : BaseState;
+    public void Update();
+    public void RequestTransition<T>(bool allowReenter = false) where T : BaseState;
 
-    public void DoUpdate()
-    {
-    }
-
-    private void CheckStateSwitching()
-    {
-    }
-
-    public void SetState(BaseState newState)
-    {
-    }
-    public string GetStateAndSubStateNames()
-    {
-    }
- }
-```
-This is a very simple focused controller that delegates state management to the states themselves, following the single responsibility principle. This approach makes it very reusable between use cases. Examples would be to use this not only for the player but for enemies and even environment objects that may need some form of state management.
-
-
-### How a state is added to that state machine:
-
-First a state would be created, example of the state class below:
-```csharp
- public class ExampleState : BaseState
-    {
-        private readonly PlayerCharacter _ctx;
-
-        public IdleState(StateGenerator generator, PlayerCharacter ctx) : base(generator)
-        {
-            _ctx = ctx;
-        }
-
-        public override void EnterState()
-        {
-          //Enter Logic
-        }
-
-        public override void ExitState()
-        {
-          //Exit logic
-        }
-
-        public override void UpdateState()
-        {
-          //Update logic
-        }
-
-        public override bool CheckStateSwitch(out string newState)
-        {
-            if (CheckisTrue)
-            {
-                newState = nameof(NextStateClass);
-                return true;
-            }
-            
-            newState = null;
-            return false;
-        }
-    }
-```
-
-Once the state is created, we can register the state using the Register state wrapper function available in the StateMachineBehaviour class:
-```csharp
-public abstract class StateMachineBehaviour : MonoBehaviour
-{
-    protected StateMachine _stateMachine;
-    
-    protected void RegisterState<T>(T state) where T : BaseState
-    {
-        _stateMachine.Generator.AddState(typeof(T).Name, state);
-    }
-    
-    protected abstract void RegisterStates();
+    public IReadOnlyList<BaseState> ActivePath { get; }
+    public BaseState ActiveLeaf { get; }
+    public event Action<BaseState, BaseState> OnTransition; // (previous leaf, new leaf)
+    public string GetActivePathDescription();
 }
 ```
-We would register like the following within the class inheriting from this abstract class:
 
+**What happens every `Update()`:**
+1. **Find a transition.** "Any" transitions are checked first, then the transitions of each active state from root to leaf. The first condition that passes wins, and at most one transition happens per tick. Because parents are checked first, a transition declared on a superstate applies to all of its substates.
+2. **Perform it** (see below).
+3. **Tick the active path.** `OnUpdate` runs root → leaf, then `OnLateUpdate` runs leaf → root.
+
+**How a transition is performed:**
+The machine finds the *lowest common ancestor* (LCA) of the current active path and the target, then:
+1. exits from the active leaf up to, but not including, the LCA;
+2. enters from below the LCA down to the target;
+3. keeps entering `DefaultChild` states until it reaches a leaf.
+
+Using the player's tree as an example:
+
+| Transition | Calls |
+|---|---|
+| `Idle → Run` | Exit Idle, Enter Run (`Grounded` stays active) |
+| `Run → Jump` | Exit Run, Exit Grounded, Enter Jump |
+| `Falling → Grounded` | Exit Falling, Enter Grounded, Enter Idle (default child) |
+
+**Built-in safety:**
+- A transition to a state that is already active is ignored, unless it was declared with `allowReenter: true`.
+- A transition requested from inside `OnEnter`/`OnExit` is queued and runs as soon as the current transition finishes, so the tree is never changed while it is still being entered or exited.
+- More than 8 chained transitions in a row throws an error, to catch transition loops.
+- `Start<T>()` validates that every state with substates has a default substate.
+
+#### HsmBehaviour
+
+`HsmBehaviour` is the `MonoBehaviour` that hosts a `StateMachine`. Inherit from it on any object that needs states (player, enemies, environment objects). It was previously named `StateMachineBehaviour` and was renamed to avoid clashing with Unity's own `UnityEngine.StateMachineBehaviour`.
+```csharp
+public abstract class HsmBehaviour : MonoBehaviour
+{
+    protected StateMachine Machine { get; }
+    public Animator Animator { get; }
+    public string GetStatesDebugText { get; } // shown in the inspector while playing
+
+    protected abstract void RegisterStates(); // called from Awake
+
+    protected T AddState<T>(T state, BaseState parent = null, bool isDefault = false) where T : BaseState;
+    protected void AddTransition<TFrom, TTo>(Func<bool> condition, bool allowReenter = false);
+    protected void AddAnyTransition<TTo>(Func<bool> condition, bool allowReenter = false);
+}
+```
+
+### How a state is added to the state machine
+
+**1. Create the state.** Give it the context it needs through its constructor, and override only the hooks it uses:
+```csharp
+public class ExampleState : BaseState
+{
+    private readonly PlayerCharacter _ctx;
+
+    public ExampleState(PlayerCharacter ctx)
+    {
+        _ctx = ctx;
+    }
+
+    protected override void OnEnter()
+    {
+        // Enter logic
+    }
+
+    protected override void OnUpdate()
+    {
+        // Update logic
+    }
+
+    protected override void OnExit()
+    {
+        // Exit logic
+    }
+}
+```
+
+**2. Register the states and transitions** in `RegisterStates()` of the class inheriting from `HsmBehaviour`. This is the player's setup from `PlayerCharacter.cs`:
 ```csharp
 protected override void RegisterStates()
-        {
-            RegisterState(new GroundedBaseState(_stateMachine.Generator, this));
-            RegisterState(new IdleState(_stateMachine.Generator, this));
-            RegisterState(new RunState(_stateMachine.Generator, this));
-            RegisterState(new JumpState(_stateMachine.Generator, this));
-            RegisterState(new FallingState(_stateMachine.Generator, this));
-        }
+{
+    // Tree
+    var grounded = AddState(new GroundedBaseState(this));
+    AddState(new IdleState(), grounded, isDefault: true);
+    AddState(new RunState(this), grounded);
+    AddState(new JumpState(this));
+    AddState(new FallingState(this));
+
+    // Evaluated parent-first, first match wins: Grounded's exits apply while in Idle or Run.
+    AddTransition<GroundedBaseState, JumpState>(() => JumpPressed);
+    AddTransition<GroundedBaseState, FallingState>(() => !IsGrounded);
+    AddTransition<IdleState, RunState>(() =>
+        PlayerInput.magnitude > 0 || MovementComponent.GetCurrentVelocityWithoutGravity().magnitude > 0);
+    AddTransition<RunState, IdleState>(() =>
+        MovementComponent.GetCurrentVelocityWithoutGravity() == Vector3.zero);
+    AddTransition<JumpState, FallingState>(() => MovementComponent.GetCurrentVelocity().y < 0);
+    AddTransition<FallingState, GroundedBaseState>(() => IsGrounded);
+}
 ```
 
-Then we need to set the first state to be used, this can be done anywhere in your code as long as its after the awake function of the StateMachineBehaviour abstract class:
+Transitions that should fire from any state can be declared with `AddAnyTransition`. This is an illustrative example; `DeadState` is not part of the sample:
 ```csharp
-_stateMachine.SetState(_stateMachine.Generator.GetState(nameof(GroundedBaseState)));
+AddAnyTransition<DeadState>(() => Health <= 0);
 ```
 
+**3. Start and tick the machine.** Start it after `base.Awake()` has registered the states, and update it every frame:
+```csharp
+protected override void Awake()
+{
+    base.Awake();
+    // ... set up anything the states need ...
+    Machine.Start<GroundedBaseState>();
+}
+
+private void Update()
+{
+    Machine.Update();
+}
+```
 
 ### Key Notes
 
 This implementation of the HSM allows for the following benefits:
 
 - **Reduced code complexity**
-- **Loose coupling**, states manages themselves and interact within their interface restrictions
+- **Loose coupling**: states hold behaviour only. Transitions are declared in one place, so an entity's whole state graph is visible at a glance.
+- **Hierarchical transitions**: a transition can go from any level to any other level, and a transition declared on a superstate covers all of its substates.
+- **Guaranteed enter/exit order**: substates are always exited before their superstate and entered after it, so no state is left half-active.
 - **Consistent patterns**
 - **Clear separation of logic**
-- **Easy extending** as new states can be made with complex logic, without the need of modifying the HSM framework
-- **Dependency Injection**, each states receive their dependencies beforehand, with some changes, unit testing could be implemented too.
-- **Isolated States**, Since each state cares about itself, it makes it much easier to debug logic issues as you know they are restricted to the state in question.
-- **Reusable Substates**, depending on the need, substates could be used between super states, removing the need for duplicate states.
+- **Easy extending**: new states can be made with complex logic without modifying the HSM framework.
+- **Fail-fast validation**: unknown states, duplicate registrations, missing default substates and transition loops are reported with clear errors.
+- **Dependency injection**: each state receives its dependencies beforehand. `BaseState`, `Transition` and `StateMachine` have no Unity dependency, so the machine itself can be unit tested outside Unity.
+- **Isolated states**: since each state only cares about itself, logic issues are much easier to debug because they are restricted to the state in question.
+- **Shared behaviour through superstates**: each state type is registered once, under a single parent. Behaviour and transitions that several states have in common belong in their shared superstate (e.g. gravity and the jump/fall transitions in `GroundedBaseState`).
