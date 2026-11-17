@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!114 &-8810090836068663275
+--- !u!114 &-5317216275365900821
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -11,60 +11,13 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c18180ecb35941f4682ae60107b85b7c, type: 3}
   m_Name: bank:/Footstep.bank
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: FMODUnityEditor::FMODUnity.EditorBankRef
   Path: Assets/Audio/FMOD Banks/Desktop/Footstep.bank
   Name: Footstep
   StudioPath: bank:/Charater/Footstep
-  lastModified: 638826750569065051
+  lastModified: 639305206543864509
   FileSizes: []
   Exists: 1
---- !u!114 &-5009201079609345447
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c18180ecb35941f4682ae60107b85b7c, type: 3}
-  m_Name: bank:/Master.strings.bank
-  m_EditorClassIdentifier: 
-  Path: Assets/Audio/FMOD Banks/Desktop/Master.strings.bank
-  Name: Master.strings
-  StudioPath: bank:/Master.strings
-  lastModified: 638826743382840036
-  FileSizes:
-  - Name: 
-    Value: 830
-  Exists: 1
---- !u!114 &-318813972780522772
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: ceb653cd98e289a4e8697a1af55201f2, type: 3}
-  m_Name: event:/Footstep
-  m_EditorClassIdentifier: 
-  Path: event:/Footstep
-  Guid:
-    Data1: 1210426266
-    Data2: 1150433974
-    Data3: 734414255
-    Data4: 1501334014
-  Banks:
-  - {fileID: -8810090836068663275}
-  IsStream: 0
-  Is3D: 0
-  IsOneShot: 1
-  Parameters: []
-  MinDistance: 1
-  MaxDistance: 20
-  Length: 0
 --- !u!114 &11400000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -76,24 +29,24 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: d32cf7c32a3ed8347bac48ef5ed56d82, type: 3}
   m_Name: FMODStudioCache
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: FMODUnityEditor::FMODUnity.EventCache
   EditorBanks:
-  - {fileID: -5009201079609345447}
-  - {fileID: -8810090836068663275}
-  - {fileID: 3283732366973068471}
+  - {fileID: 9107573114599586849}
+  - {fileID: -5317216275365900821}
+  - {fileID: 6410547372312395222}
   EditorEvents:
-  - {fileID: -318813972780522772}
+  - {fileID: 9142803710618233408}
   EditorParameters: []
   MasterBanks:
-  - {fileID: 3283732366973068471}
+  - {fileID: 6410547372312395222}
   StringsBanks:
-  - {fileID: -5009201079609345447}
-  cacheVersion: 131847
-  cacheTime: 638826750569065051
+  - {fileID: 9107573114599586849}
+  cacheVersion: 131861
+  cacheTime: 639305206543874535
   SerializableEventsDict:
   - key: event:/Footstep
     index: 0
---- !u!114 &3283732366973068471
+--- !u!114 &6410547372312395222
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -104,10 +57,57 @@ MonoBehaviour:
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: c18180ecb35941f4682ae60107b85b7c, type: 3}
   m_Name: bank:/Master.bank
-  m_EditorClassIdentifier: 
+  m_EditorClassIdentifier: FMODUnityEditor::FMODUnity.EditorBankRef
   Path: Assets/Audio/FMOD Banks/Desktop/Master.bank
   Name: Master
   StudioPath: bank:/Master
-  lastModified: 638826743382832928
+  lastModified: 639305206543864509
   FileSizes: []
   Exists: 1
+--- !u!114 &9107573114599586849
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c18180ecb35941f4682ae60107b85b7c, type: 3}
+  m_Name: bank:/Master.strings.bank
+  m_EditorClassIdentifier: FMODUnityEditor::FMODUnity.EditorBankRef
+  Path: Assets/Audio/FMOD Banks/Desktop/Master.strings.bank
+  Name: Master.strings
+  StudioPath: bank:/Master.strings
+  lastModified: 639305206543874535
+  FileSizes:
+  - Name: 
+    Value: 830
+  Exists: 1
+--- !u!114 &9142803710618233408
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ceb653cd98e289a4e8697a1af55201f2, type: 3}
+  m_Name: event:/Footstep
+  m_EditorClassIdentifier: FMODUnityEditor::FMODUnity.EditorEventRef
+  Path: event:/Footstep
+  Guid:
+    Data1: 1210426266
+    Data2: 1150433974
+    Data3: 734414255
+    Data4: 1501334014
+  Banks:
+  - {fileID: -5317216275365900821}
+  IsStream: 0
+  Is3D: 0
+  IsOneShot: 1
+  Parameters: []
+  MinDistance: 1
+  MaxDistance: 20
+  Length: 0

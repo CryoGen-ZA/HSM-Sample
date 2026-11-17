@@ -1,12 +1,12 @@
+using HSM.Core;
 using HSM.EnemyStates;
 using UnityEngine;
 using UnityEngine.AI;
-using StateMachineBehaviour = HSM.Core.StateMachineBehaviour;
 
 namespace Enemies
 {
     [RequireComponent(typeof(NavMeshAgent))]
-    public class EnemyController : StateMachineBehaviour
+    public class EnemyController : HsmBehaviour
     {
         public NavMeshAgent _agent { private set; get; }
         public Transform[] patrolPoints;
@@ -15,17 +15,22 @@ namespace Enemies
         {
             base.Awake();
             _agent = GetComponent<NavMeshAgent>();
-            _stateMachine.SetState(_stateMachine.Generator.GetState(nameof(EnemyPatrolBaseState)));
+            Machine.Start<EnemyPatrolBaseState>();
         }
+
         protected override void RegisterStates()
         {
-            RegisterState(new EnemyPatrolBaseState(_stateMachine.Generator, this));
-            RegisterState(new EnemyPatrolWalking(_stateMachine.Generator, this));
-            RegisterState(new EnemyIdle(_stateMachine.Generator, this));
+            var patrol = AddState(new EnemyPatrolBaseState(this));
+            AddState(new EnemyIdle(this), patrol, isDefault: true);
+            AddState(new EnemyPatrolWalking(this), patrol);
+
+            AddTransition<EnemyIdle, EnemyPatrolWalking>(() => _agent.velocity.magnitude > 0.1f);
+            AddTransition<EnemyPatrolWalking, EnemyIdle>(() => _agent.velocity.magnitude <= 0.1f);
         }
+
         private void Update()
         {
-            _stateMachine.DoUpdate();
+            Machine.Update();
         }
     }
 }

@@ -9,44 +9,26 @@ namespace HSM.PlayerStates
         private static readonly int IsGroundedHash = Animator.StringToHash("IsGrounded");
         private readonly PlayerCharacter _ctx;
 
-        public GroundedBaseState(StateGenerator generator, PlayerCharacter ctx) : base(generator)
+        public GroundedBaseState(PlayerCharacter ctx)
         {
             _ctx = ctx;
         }
 
-        public override void EnterState()
+        protected override void OnEnter()
         {
             _ctx.Animator.SetBool(IsGroundedHash, true);
-            SetSubState(Generator.GetState(nameof(IdleState)));
         }
 
-        public override void ExitState()
+        protected override void OnExit()
         {
             _ctx.Animator.SetBool(IsGroundedHash, false);
         }
 
-        public override void UpdateState()
+        // LateUpdate so gravity is added after the child state (e.g. RunState) has set its velocity,
+        // matching the previous "UpdateSubState() then add gravity" order.
+        protected override void OnLateUpdate()
         {
-            UpdateSubState();
             _ctx.MovementComponent.AddVelocity(Vector3.down * (_ctx.gravity * Time.deltaTime));
-        }
-
-        public override bool CheckStateSwitch(out string newState)
-        {
-            if (_ctx.JumpPressed)
-            {
-                newState = nameof(JumpState);
-                return true;
-            }
-
-            if (!_ctx.IsGrounded)
-            {
-                newState = nameof(FallingState);
-                return true;
-            }
-            
-            newState = null;
-            return false;
         }
     }
 }

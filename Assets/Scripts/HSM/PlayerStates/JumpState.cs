@@ -16,24 +16,24 @@ namespace HSM.PlayerStates
         private readonly PlayerCharacter _ctx;
         
 
-        public JumpState(StateGenerator generator, PlayerCharacter ctx) : base(generator)
+        public JumpState(PlayerCharacter ctx)
         {
             _ctx = ctx;
         }
         
-        public override void EnterState()
+        protected override void OnEnter()
         {
             _cameraTransform ??= Camera.main.transform;
             _initialVelocity = _ctx.MovementComponent.GetCurrentVelocity();
             CalculateJumpHeight();
             DoJump();
         }
-        public override void ExitState()
+        protected override void OnExit()
         {
             _ctx.Animator.SetBool(JumpHash, false);
         }
 
-        public override void UpdateState()
+        protected override void OnUpdate()
         {
             if (_currentMultiJumpCooldown > 0)
                 _currentMultiJumpCooldown -= Time.deltaTime;
@@ -50,20 +50,6 @@ namespace HSM.PlayerStates
                 _ctx.transform.rotation = Quaternion.RotateTowards(_ctx.transform.rotation,
                     Quaternion.LookRotation(directionVelocity.normalized), 
                     _ctx.rotationSpeed);
-        }
-
-       
-
-        public override bool CheckStateSwitch(out string newState)
-        {
-            if (_ctx.MovementComponent.GetCurrentVelocity().y < 0)
-            {
-                newState = nameof(FallingState);
-                return true;
-            }
-
-            newState = null;
-            return false;
         }
         
         private void DoJump()

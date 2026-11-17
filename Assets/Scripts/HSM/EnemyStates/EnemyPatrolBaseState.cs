@@ -8,35 +8,24 @@ namespace HSM.EnemyStates
         private readonly EnemyController _ctx;
         private int currentPatrolIndex;
 
-        public EnemyPatrolBaseState(StateGenerator generator, EnemyController ctx) : base(generator)
+        public EnemyPatrolBaseState(EnemyController ctx)
         {
             _ctx = ctx;
         }
 
-        public override void EnterState()
+        protected override void OnEnter()
         {
-            SetSubState(Generator.GetState(nameof(EnemyIdle)));
             _ctx._agent.SetDestination(_ctx.patrolPoints[0].position);
         }
 
-        public override void ExitState()
+        // LateUpdate keeps the previous "update sub state, then patrol" order.
+        protected override void OnLateUpdate()
         {
-        }
-
-        public override void UpdateState()
-        {
-            UpdateSubState();
             if (_ctx._agent.remainingDistance <= _ctx._agent.stoppingDistance)
             {
                 currentPatrolIndex = (currentPatrolIndex + 1) % _ctx.patrolPoints.Length;
                 _ctx._agent.SetDestination(_ctx.patrolPoints[currentPatrolIndex].position);
             }
-        }
-
-        public override bool CheckStateSwitch(out string newState)
-        {
-            newState = "Undefined"; //We don't have other base states for AI at the moment
-            return false;
         }
     }
 }
