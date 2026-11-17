@@ -11,23 +11,23 @@ namespace HSM.PlayerStates
         private Vector3 _initialVelocity;
         private readonly PlayerCharacter _ctx;
 
-        public FallingState(StateGenerator generator, PlayerCharacter ctx) : base(generator)
+        public FallingState(PlayerCharacter ctx)
         {
             _ctx = ctx;
         }
 
-        public override void EnterState()
+        protected override void OnEnter()
         {
             _cameraTransform ??= Camera.main.transform;
             _initialVelocity = _ctx.MovementComponent.GetCurrentVelocity();
         }
 
-        public override void ExitState()
+        protected override void OnExit()
         {
             _currentGravityMultiplier = 0;
         }
 
-        public override void UpdateState()
+        protected override void OnUpdate()
         {
             var airControlVelocity = StateHelpers.CreateAirControllerVelocity(_cameraTransform, _ctx.PlayerInput, 
                 _initialVelocity, _ctx.MovementComponent.GetCurrentVelocity(), _ctx.runSpeed, _ctx.airControl);
@@ -42,18 +42,6 @@ namespace HSM.PlayerStates
                 _ctx.transform.rotation = Quaternion.RotateTowards(_ctx.transform.rotation,
                     Quaternion.LookRotation(directionVelocity.normalized), 
                     _ctx.rotationSpeed);
-        }
-
-        public override bool CheckStateSwitch(out string newState)
-        {
-            if (_ctx.IsGrounded)
-            {
-                newState = nameof(GroundedBaseState);
-                return true;
-            }
-
-            newState = null;
-            return false;
         }
     }
 }

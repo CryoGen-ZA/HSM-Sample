@@ -1,58 +1,75 @@
-using System.Text;
+using System;
+using System.Collections.Generic;
 
 namespace HSM.Core
 {
+    /// <summary>
+    /// A node in the state hierarchy. The tree (Parent / DefaultChild) is fixed at registration time
+    /// by <see cref="StateMachine.AddState{T}"/>; the machine owns which states are active and drives
+    /// the lifecycle. Override only the hooks you need.
+    /// </summary>
     public abstract class BaseState
     {
-        protected readonly StateGenerator Generator;
+        public StateMachine Machine { get; private set; }
+        public BaseState Parent { get; private set; }
+        public BaseState DefaultChild { get; private set; }
+        public int Depth { get; private set; }
+        public bool IsActive { get; private set; }
+        public bool HasChildren { get; private set; }
+        public string Name => GetType().Name;
 
-        private BaseState _subState;
-        private BaseState _superState;
+        internal readonly List<Transition> Transitions = new();
 
-        protected BaseState(StateGenerator generator)
+        /// <summary>Called when the state becomes active, before its default child is entered.</summary>
+        protected virtual void OnEnter() { }
+
+        /// <summary>Called when the state is left, after its active child has been exited.</summary>
+        protected virtual void OnExit() { }
+
+        /// <summary>Called every tick, parents before children.</summary>
+        protected virtual void OnUpdate() { }
+
+        /// <summary>Called every tick after all OnUpdate calls, children before parents.</summary>
+        protected virtual void OnLateUpdate() { }
+
+        /// <summary>Imperatively request a transition. It is applied at the start of the next machine tick.</summary>
+        protected void RequestTransition<T>(bool allowReenter = false) where T : BaseState
         {
-            Generator = generator;
+            Machine.RequestTransition<T>(allowReenter);
         }
 
-        public abstract void EnterState();
-        public abstract void ExitState();
-        public abstract void UpdateState();
-        public abstract bool CheckStateSwitch(out string newState);
-
-        protected void SetSubState(BaseState newSubState)
+        internal void Attach(StateMachine machine, BaseState parent)
         {
-            _subState?.ExitState();
-            _subState = newSubState;
-            _subState.SetSuperState(_superState);
-            _subState.EnterState();
+            if (Machine != null)
+                throw new InvalidOperationException($"State '{Name}' is already registered with a state machine.");
+
+            Machine = machine;
+            Parent = parent;
+            Depth = parent == null ? 0 : parent.Depth + 1;
+            if (parent != null) parent.HasChildren = true;
         }
 
-        private void SetSuperState(BaseState newSuperState)
+        internal void SetDefaultChild(BaseState child)
         {
-            _superState = newSuperState;
+            if (DefaultChild != null)
+                throw new InvalidOperationException(
+                    $"State '{Name}' already has default child '{DefaultChild.Name}', cannot also set '{child.Name}'.");
+            DefaultChild = child;
         }
 
-        protected void UpdateSubState()
+        internal void Enter()
         {
-            if (_subState == null) return;
-            
-            CheckSubStateSwitch();
-            _subState.UpdateState();
+            IsActive = true;
+            OnEnter();
         }
 
-        private void CheckSubStateSwitch()
+        internal void Exit()
         {
-            if (_subState.CheckStateSwitch(out var newSubState))
-            {
-                SetSubState(Generator.GetState(newSubState));
-            }
+            OnExit();
+            IsActive = false;
         }
 
-        public void BuildStatesNames(StringBuilder stringBuilder)
-        {
-            if (_subState != null)
-                _subState.BuildStatesNames(stringBuilder);
-            stringBuilder.Insert(0, _superState == null ? $"Base State: {GetType().Name} \n" : $"Sub State: {GetType().Name} \n");
-        }
+        internal void Update() => OnUpdate();
+        internal void LateUpdate() => OnLateUpdate();
     }
 }

@@ -18,22 +18,22 @@ namespace HSM.PlayerStates
         private Vector3 _lastPosition;
         private readonly PlayerCharacter _ctx;
 
-        public RunState(StateGenerator generator, PlayerCharacter ctx) : base(generator)
+        public RunState(PlayerCharacter ctx)
         {
             _ctx = ctx;
         }
 
-        public override void EnterState()
+        protected override void OnEnter()
         {
             _cameraTransform ??= Camera.main.transform;
         }
 
-        public override void ExitState()
+        protected override void OnExit()
         {
             _ctx.Animator.SetFloat(MovementSpeedHash, 0);
         }
 
-        public override void UpdateState()
+        protected override void OnUpdate()
         { 
             CalculateMovementVelocity();
 
@@ -145,18 +145,6 @@ namespace HSM.PlayerStates
             
             var stickyAlpha = StateHelpers.Remap(distance, 0, _ctx.maxStickyGroundedCheck, 0, 1);
             return _ctx.gravity + _ctx.stickyGravity * stickyAlpha;
-        }
-
-        public override bool CheckStateSwitch(out string newState)
-        {
-            if (_ctx.MovementComponent.GetCurrentVelocityWithoutGravity() == Vector3.zero)
-            {
-                newState = nameof(IdleState);
-                return true;
-            }
-
-            newState = null;
-            return false;
         }
     }
 }

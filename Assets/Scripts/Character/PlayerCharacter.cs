@@ -1,18 +1,16 @@
+using HSM.Core;
 using HSM.PlayerStates;
 using UnityEngine;
-using StateMachineBehaviour = HSM.Core.StateMachineBehaviour;
 
 namespace Character
 {
     [RequireComponent(typeof(CharacterController))]
-    public class PlayerCharacter : StateMachineBehaviour
+    public class PlayerCharacter : HsmBehaviour
     {
         private CharacterController _characterController;
         private PlayerInputHandler _inputHandler;
         public MovementComponent MovementComponent {private set; get;}
 
-        public string GetStatesDebugText => _stateMachine.GetStateAndSubStateNames();
-    
         [SerializeField] public float leanStrength = 4;
         [SerializeField] public float leanBlendSpeed = 2;
 
@@ -55,16 +53,26 @@ namespace Character
             _inputHandler = new PlayerInputHandler();
             _inputHandler.Initialize();
             SubscribeToInputs();
-            _stateMachine.SetState(_stateMachine.Generator.GetState(nameof(GroundedBaseState)));
+            Machine.Start<GroundedBaseState>();
         }
-        
+
         protected override void RegisterStates()
         {
-            RegisterState(new GroundedBaseState(_stateMachine.Generator, this));
-            RegisterState(new IdleState(_stateMachine.Generator, this));
-            RegisterState(new RunState(_stateMachine.Generator, this));
-            RegisterState(new JumpState(_stateMachine.Generator, this));
-            RegisterState(new FallingState(_stateMachine.Generator, this));
+            var grounded = AddState(new GroundedBaseState(this));
+            AddState(new IdleState(), grounded, isDefault: true);
+            AddState(new RunState(this), grounded);
+            AddState(new JumpState(this));
+            AddState(new FallingState(this));
+
+            // Evaluated parent-first, first match wins: Grounded's exits apply while in Idle or Run.
+            AddTransition<GroundedBaseState, JumpState>(() => JumpPressed);
+            AddTransition<GroundedBaseState, FallingState>(() => !IsGrounded);
+            AddTransition<IdleState, RunState>(() =>
+                PlayerInput.magnitude > 0 || MovementComponent.GetCurrentVelocityWithoutGravity().magnitude > 0);
+            AddTransition<RunState, IdleState>(() =>
+                MovementComponent.GetCurrentVelocityWithoutGravity() == Vector3.zero);
+            AddTransition<JumpState, FallingState>(() => MovementComponent.GetCurrentVelocity().y < 0);
+            AddTransition<FallingState, GroundedBaseState>(() => IsGrounded);
         }
 
         private void SubscribeToInputs()
@@ -87,7 +95,7 @@ namespace Character
         {
             IsGrounded = Physics.CheckSphere(_characterController.transform.position, groundedCheckRadius, ~ignoreMask);
         
-            _stateMachine.DoUpdate();
+            Machine.Update();
             MovementComponent.DoUpdate();
         }
     }
